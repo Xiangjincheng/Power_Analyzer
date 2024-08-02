@@ -1,2 +1,0 @@
-库下载地址：https://www.ti.com.cn/tool/cn/CONTROLSUITE
-环境库添加方式：https://zhuanlan.zhihu.com/p/687784799
