@@ -1,0 +1,66 @@
+//###########################################################################
+// $TI Release: 2802x C/C++ Header Files V1.26 $
+// $Release Date: February 2, 2010 $
+//###########################################################################
+
+#include "DSP2833x_Device.h"  // Device Headerfile and Examples Include File
+#include "My_structure.h"
+#include "My_variable_extern.h"   // DSP2802x Examples Include File
+#include <math.h>
+
+void Calc_rms(struct AC_DATASET *pdtaset,unsigned int count)		//交流量采样处理函数
+{	pdtaset->iSamp1=pdtaset->iSamp-pdtaset->iOffset;//采样值减去偏置得到去偏置采样值
+	pdtaset->Sum2-=(long int)pdtaset->iBuf[count] * (long int)pdtaset->iBuf[count];//采用窗口法，减去一个旧的值的平方
+    pdtaset->Sum2+=(long int)pdtaset->iSamp1 * (long int)pdtaset->iSamp1;//去偏置采样值平方和
+	pdtaset->fInvalue  	=pdtaset->iSamp1 * pdtaset->fKins ; //去偏置采样值乘以系数得瞬时值
+	pdtaset->iBuf[count]=pdtaset->iSamp1; //去偏置采样值放入ibuf中                                //去偏置采样值平方和求平均
+	pdtaset->fRms=sqrt(pdtaset->Sum2/360) * pdtaset->fKrms;//平方和平均值减去平均值的平方乘以系数得交流量
+}
+
+void power_deal(float fUinvalue,float flinvalue,unsigned int cnt)
+{	static int databuff[360];
+	static long int powersum=0;
+	int buff;
+	buff=fUinvalue*flinvalue*100;
+	powersum=powersum-databuff[cnt]+buff;
+	databuff[cnt]=buff; 
+	System.iPower2=powersum/360;
+}
+void Calc_ave(struct DC_DATASET *pdtaset,unsigned int count)	//直流量采样处理函数
+{	pdtaset->iSamp1= pdtaset->iSamp-pdtaset->iOffset;			//采样值减去偏置得到去偏置采样值
+	pdtaset->lSum -= pdtaset->iBuf[count]; 						//采用窗口法，减去一个旧的值
+	pdtaset->lSum += pdtaset->iSamp1; 							//放入一个新的值
+	pdtaset->iBuf[count]=pdtaset->iSamp1; 						//去偏置采样值放入ibuf中
+	pdtaset->fInvalue  	=pdtaset->iBuf[count] * pdtaset->fKins; //去偏置采样值乘以系数得到瞬时值
+	pdtaset->fAve  		=pdtaset->lSum * pdtaset->fKave ; 		//去偏置采样值乘以系数得到平均值
+}
+void ADCdata_Deal(void)   
+{	static unsigned int uiADC_Soc32=0,uiADC_Soc360=0;    
+	DC_U1.iSamp = AdcRegs.ADCRESULT1>>4;  		Calc_ave(&DC_U1,uiADC_Soc32);          
+   	DC_I1.iSamp = AdcRegs.ADCRESULT0>>4; 		Calc_ave(&DC_I1,uiADC_Soc32);      	   
+   	if(System.uiWork_status<2)	//降压升压
+    {	DC_U2.iSamp = AdcRegs.ADCRESULT11>>4; 	Calc_ave(&DC_U2,uiADC_Soc32);          
+	   	DC_I2.iSamp = AdcRegs.ADCRESULT9>>4; 	Calc_ave(&DC_I2,uiADC_Soc32); 
+		power_deal(DC_U2.fAve,DC_I2.fAve,uiADC_Soc360); 	     				
+	}
+    else	
+    { 	AC_U2.iSamp=AdcRegs.ADCRESULT11>>4;			Calc_rms(&AC_U2,uiADC_Soc360);
+		AC_Iu.iSamp = AdcRegs.ADCRESULT9>>4; 		Calc_rms(&AC_Iu,uiADC_Soc360);	 
+   		AC_Iv.iSamp = AdcRegs.ADCRESULT10>>4;		Calc_rms(&AC_Iv,uiADC_Soc360);
+	 	AC_Iw.iSamp = -(AC_Iu.iSamp+AC_Iv.iSamp); 	Calc_rms(&AC_Iw,uiADC_Soc360);
+	   	power_deal(AC_U2.fInvalue,AC_Iu.fInvalue,uiADC_Soc360);	     				
+	}
+    DC_Untc.iSamp = AdcRegs.ADCRESULT8>>4; 		//	Calc_ave(&DC_Untc,uiADC_Soc32);//温度采样
+	if(uiADC_Soc32<31) uiADC_Soc32++;      //直流处理时窗口法32次取平均值
+	else uiADC_Soc32=0;
+	if(uiADC_Soc360<359) uiADC_Soc360++;	//交流处理时窗口法360次取有效值值
+	else uiADC_Soc360=0;	
+}
+
+void SYSTEM_monitor(void)
+{	/*if((DC_U1.fInvalue>70)||(DC_U2.fInvalue>70)||(AC_U2.fInvalue>70))	System.uiSystem_error|=0x0001;
+	if((DC_I1.fInvalue>3)||(DC_I2.fInvalue>3)||(AC_Iu.fInvalue>3)||(AC_Iv.fInvalue>3)||(AC_Iw.fInvalue>3))
+	System.uiSystem_error|=0x0002;
+	if(Menu_display.uiTem>600)				System.uiSystem_error|=0x0004;*/
+
+}
