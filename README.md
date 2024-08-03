@@ -28,6 +28,8 @@
 
 FFT有试过TI官方FPU库，计算速度不够快。[CONTROLSUITE下载](https://www.ti.com.cn/tool/cn/CONTROLSUITE)
 
+采样仿真可以使用 [Analog_Sample.py](Analog_Sample.py) 生成采样数据。
+
 #### 实物
 
 <img src="./Static/%E5%AE%9E%E7%89%A9%E5%9B%BE.png" alt="实物图" style="zoom: 33%;" />
